@@ -368,6 +368,10 @@
         <label>Client ID de tu app en Azure</label>
         <input type="text" id="clientIdInput" placeholder="ej. 3f1a9c2e-xxxx-xxxx-xxxx-xxxxxxxxxxxx">
       </div>
+      <div style="flex:1;min-width:220px;">
+        <label>Tenant ID (solo si tu app es "Solo mi organización")</label>
+        <input type="text" id="tenantIdInput" placeholder="ej. 22783904-17f2-4137-ba3f-98729d1f9cc2">
+      </div>
       <button class="btn-ms" id="msConnectBtn">Conectar con OneDrive</button>
     </div>
     <div class="settings-status" id="msSettingsStatus"></div>
@@ -769,24 +773,30 @@ function getStoredClientId(){
   return document.getElementById('clientIdInput').value.trim();
 }
 
+function getStoredTenantId(){
+  return document.getElementById('tenantIdInput').value.trim();
+}
+
 async function ensureMsalInstance(){
   const clientId = getStoredClientId();
+  const tenantId = getStoredTenantId();
   if(!clientId){
     throw new Error('Ingresa primero el Client ID de tu app de Azure.');
   }
-  if(msalInstance && msalInstance.__clientId === clientId){
+  const cacheKey = clientId + '|' + tenantId;
+  if(msalInstance && msalInstance.__cacheKey === cacheKey){
     return msalInstance;
   }
   const config = {
     auth: {
       clientId: clientId,
-      authority: 'https://login.microsoftonline.com/common',
+      authority: 'https://login.microsoftonline.com/' + (tenantId || 'common'),
       redirectUri: window.location.origin + window.location.pathname
     },
     cache: { cacheLocation: 'sessionStorage' }
   };
   const instance = new msal.PublicClientApplication(config);
-  instance.__clientId = clientId;
+  instance.__cacheKey = cacheKey;
   msalInstance = instance;
   return instance;
 }

@@ -6,7 +6,7 @@
 <title>Harmony - Storecheck</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=IBM+Plex+Mono:wght@400;500&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
-<script src="https://alcdn.msauth.net/browser/3.18.0/js/msal-browser.min.js"></script>
+<script src="https://alcdn.msauth.net/browser/2.35.0/js/msal-browser.min.js"></script>
 <style>
   :root{
     --paper:#FFFFFF;
@@ -786,7 +786,6 @@ async function ensureMsalInstance(){
     cache: { cacheLocation: 'sessionStorage' }
   };
   const instance = new msal.PublicClientApplication(config);
-  await instance.initialize();
   instance.__clientId = clientId;
   msalInstance = instance;
   return instance;

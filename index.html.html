@@ -1,0 +1,923 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Harmony - Storecheck</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=IBM+Plex+Mono:wght@400;500&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://alcdn.msauth.net/browser/3.18.0/js/msal-browser.min.js" integrity="sha384-VaTvXCmVCbwEYHNTZ3EQeh/EOG97ZUwbWKkYnT/DHCkNM+iBXTgKgcaJH21kSpNn" crossorigin="anonymous"></script>
+<style>
+  :root{
+    --paper:#FFFFFF;
+    --paper-2:#F3F3F3;
+    --ink:#3A3A3A;
+    --accent:#D6006F;
+    --accent-dark:#A8005A;
+    --stamp:#8A8A8A;
+    --line:#E1E1E1;
+    --muted:#8A8A8A;
+    --white:#FFFFFF;
+    --error:#D6006F;
+    --ms-green:#107C41;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:var(--paper);
+    color:var(--ink);
+    font-family:'Inter',sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:760px;margin:0 auto;padding:32px 20px 80px;}
+
+  /* Header / signature */
+  header{margin-bottom:28px;}
+  .header-box{
+    background:var(--paper-2);
+    border-radius:10px;
+    padding:24px 26px;
+  }
+  .barcode{display:flex;align-items:flex-end;gap:2px;height:34px;margin-bottom:14px;}
+  .barcode span{display:block;width:3px;background:var(--ink);}
+  h1{
+    font-family:'Space Grotesk',sans-serif;
+    font-weight:700;
+    font-size:30px;
+    letter-spacing:-0.01em;
+    margin:0 0 6px;
+  }
+  .subtitle{color:var(--muted);font-size:14.5px;line-height:1.5;max-width:56ch;}
+
+  /* Settings */
+  .settings{
+    background:var(--white);
+    border:1px solid var(--line);
+    border-radius:10px;
+    padding:16px 18px;
+    margin-bottom:28px;
+  }
+  .settings-title{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:11px;
+    letter-spacing:.06em;
+    text-transform:uppercase;
+    color:var(--muted);
+    margin:0 0 12px;
+  }
+  .settings-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;}
+  .settings label{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:11px;
+    letter-spacing:.06em;
+    text-transform:uppercase;
+    color:var(--muted);
+    display:block;
+    margin-bottom:6px;
+  }
+  .settings input[type=text]{
+    flex:1;
+    min-width:220px;
+    padding:9px 11px;
+    border:1px solid var(--line);
+    border-radius:7px;
+    font-family:'IBM Plex Mono',monospace;
+    font-size:12.5px;
+    background:var(--paper);
+    color:var(--ink);
+  }
+  .settings-status{font-size:12px;color:var(--accent);margin-top:8px;min-height:16px;font-family:'IBM Plex Mono',monospace;}
+  .settings-help{font-size:12px;color:var(--muted);margin-top:10px;line-height:1.6;}
+  .settings-help a{color:var(--accent);}
+  .ms-connected{
+    display:inline-flex;align-items:center;gap:6px;
+    font-family:'IBM Plex Mono',monospace;
+    font-size:11.5px;
+    color:var(--ms-green);
+    background:#E6F4EA;
+    border:1px solid #C3E6CB;
+    padding:5px 10px;
+    border-radius:20px;
+  }
+
+  /* Buttons */
+  button{
+    font-family:'Inter',sans-serif;
+    font-weight:600;
+    font-size:13.5px;
+    border:none;
+    border-radius:7px;
+    padding:9px 15px;
+    cursor:pointer;
+    transition:opacity .15s;
+  }
+  button:disabled{opacity:.45;cursor:not-allowed;}
+  button:hover:not(:disabled){opacity:.88;}
+  .btn-primary{background:var(--ink);color:var(--paper);}
+  .btn-accent{background:var(--accent);color:var(--white);}
+  .btn-ghost{background:transparent;color:var(--ink);border:1px solid var(--line);}
+  .btn-danger{background:transparent;color:var(--stamp);border:1px solid var(--line);}
+  .btn-ms{background:var(--ms-green);color:var(--white);}
+  .btn-sm{padding:6px 11px;font-size:12.5px;}
+
+  .add-row{margin-bottom:22px;}
+
+  /* Product ticket card */
+  .card{
+    position:relative;
+    background:var(--paper-2);
+    border:1px solid var(--line);
+    border-radius:4px;
+    margin-bottom:22px;
+    overflow:hidden;
+  }
+  .card::before{
+    content:"";
+    display:block;
+    height:0;
+    border-top:2px dashed var(--line);
+    margin:0;
+  }
+  .card-num{
+    position:absolute;
+    top:14px;
+    right:16px;
+    font-family:'IBM Plex Mono',monospace;
+    font-size:11px;
+    color:var(--muted);
+    letter-spacing:.05em;
+  }
+  .card-body{padding:20px 20px 18px;}
+  .card-title{
+    font-family:'Space Grotesk',sans-serif;
+    font-weight:700;
+    font-size:16px;
+    margin:0 0 12px;
+    padding-right:60px;
+  }
+
+  .photo-zone{
+    display:flex;
+    gap:8px;
+    flex-wrap:wrap;
+    align-items:center;
+    margin-bottom:14px;
+  }
+  .thumb{
+    width:56px;height:56px;
+    border-radius:6px;
+    object-fit:cover;
+    border:1px solid var(--line);
+  }
+  .thumb-remove{
+    position:relative;
+  }
+  .thumb-x{
+    position:absolute;top:-6px;right:-6px;
+    width:18px;height:18px;
+    border-radius:50%;
+    background:var(--stamp);
+    color:#fff;
+    font-size:11px;
+    line-height:18px;
+    text-align:center;
+    cursor:pointer;
+    border:2px solid var(--white);
+  }
+  .file-label{
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    width:56px;height:56px;
+    border:1.5px dashed var(--line);
+    border-radius:6px;
+    color:var(--muted);
+    font-size:22px;
+    cursor:pointer;
+    background:var(--paper);
+  }
+  .file-label:hover{border-color:var(--accent);color:var(--accent);}
+  input[type=file]{display:none;}
+
+  .card-actions{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:4px;}
+
+  .status-line{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:12px;
+    margin:10px 0 0;
+    min-height:15px;
+  }
+  .status-line.loading{color:var(--muted);}
+  .status-line.error{color:var(--error);}
+  .status-line.ok{color:var(--accent);}
+
+  .fields{margin-top:16px;border-top:1px solid var(--line);padding-top:16px;}
+  .field{margin-bottom:12px;}
+  .field label{
+    display:block;
+    font-family:'IBM Plex Mono',monospace;
+    font-size:10.5px;
+    letter-spacing:.06em;
+    text-transform:uppercase;
+    color:var(--muted);
+    margin-bottom:5px;
+  }
+  .field input, .field textarea{
+    width:100%;
+    padding:8px 10px;
+    border:1px solid var(--line);
+    border-radius:6px;
+    font-family:'Inter',sans-serif;
+    font-size:13.5px;
+    color:var(--ink);
+    background:var(--paper);
+    resize:vertical;
+  }
+  .field textarea{min-height:56px;}
+  .fields-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+  @media(max-width:520px){.fields-grid{grid-template-columns:1fr;}}
+
+  .sent-badge{
+    display:inline-flex;align-items:center;gap:6px;
+    font-family:'IBM Plex Mono',monospace;
+    font-size:11.5px;
+    color:var(--accent);
+    background:#EAF3EC;
+    border:1px solid #CFE4D4;
+    padding:5px 10px;
+    border-radius:20px;
+    margin-top:10px;
+  }
+  .sent-badge.ms{
+    color:var(--ms-green);
+    background:#E6F4EA;
+    border:1px solid #C3E6CB;
+  }
+
+  .empty{
+    text-align:center;
+    padding:40px 20px;
+    color:var(--muted);
+    font-size:14px;
+    border:1.5px dashed var(--line);
+    border-radius:10px;
+    background:var(--white);
+  }
+
+  .footnote{
+    margin-top:26px;
+    font-size:12px;
+    color:var(--muted);
+    line-height:1.6;
+    border-top:1px solid var(--line);
+    padding-top:14px;
+  }
+
+  .copy-section{
+    background:var(--white);
+    border:1px solid var(--line);
+    border-radius:10px;
+    padding:20px;
+    margin-top:8px;
+  }
+  .copy-title{
+    font-family:'Space Grotesk',sans-serif;
+    font-weight:700;
+    font-size:16px;
+    margin:0 0 6px;
+  }
+  .copy-hint{
+    font-size:13px;
+    color:var(--muted);
+    margin:0 0 14px;
+    line-height:1.5;
+  }
+  .table-scroll{
+    overflow-x:auto;
+    border:1px solid var(--line);
+    border-radius:6px;
+    margin-bottom:14px;
+  }
+  .preview-table{
+    border-collapse:collapse;
+    width:100%;
+    font-size:12.5px;
+  }
+  .preview-table th, .preview-table td{
+    border:1px solid var(--line);
+    padding:7px 10px;
+    text-align:left;
+    white-space:nowrap;
+    max-width:220px;
+    overflow:hidden;
+    text-overflow:ellipsis;
+  }
+  .preview-table th{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:10.5px;
+    letter-spacing:.04em;
+    text-transform:uppercase;
+    color:var(--muted);
+    background:var(--paper);
+  }
+  .copy-actions{display:flex;align-items:center;gap:12px;flex-wrap:wrap;}
+  .copy-status{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:12px;
+    color:var(--accent);
+  }
+  .ms-status{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:12px;
+    color:var(--ms-green);
+  }
+  .ms-status.error{color:var(--error);}
+  .copy-buffer{
+    position:absolute;
+    left:-9999px;
+    top:-9999px;
+    width:1px;
+    height:1px;
+    opacity:0;
+  }
+  .divider-label{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:10.5px;
+    letter-spacing:.06em;
+    text-transform:uppercase;
+    color:var(--muted);
+    margin:18px 0 10px;
+    padding-top:16px;
+    border-top:1px dashed var(--line);
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="header-box">
+    <div class="barcode" id="barcode"></div>
+    <h1>Harmony - Storecheck</h1>
+    <p class="subtitle">Sube fotos del empaque de un producto (frente, tabla de ingredientes, fabricante), Claude extrae los datos y los envías a Excel Online (OneDrive) o los copias a Google Sheets.</p>
+  </header>
+
+  <div class="settings">
+    <p class="settings-title">Conexión con Microsoft OneDrive / Excel Online</p>
+    <div class="settings-row">
+      <div style="flex:1;min-width:220px;">
+        <label>Client ID de tu app en Azure</label>
+        <input type="text" id="clientIdInput" placeholder="ej. 3f1a9c2e-xxxx-xxxx-xxxx-xxxxxxxxxxxx">
+      </div>
+      <button class="btn-ms" id="msConnectBtn">Conectar con OneDrive</button>
+    </div>
+    <div class="settings-status" id="msSettingsStatus"></div>
+    <p class="settings-help">
+      Necesitas registrar una app gratuita en Azure AD (Entra ID) con permiso <code>Files.ReadWrite</code> y una Redirect URI de tipo SPA que sea exactamente esta página, alojada en una URL estable (ej. GitHub Pages).
+      Esta URL actual es: <code id="currentOrigin"></code>
+    </p>
+  </div>
+
+  <div class="add-row">
+    <button class="btn-accent" id="addProductBtn">+ Agregar producto</button>
+  </div>
+
+  <div id="cardsContainer"></div>
+  <div class="empty" id="emptyState">Todavía no agregaste ningún producto.</div>
+
+  <div class="copy-section" id="copySection" style="display:none;">
+    <h3 class="copy-title">Resumen de productos analizados</h3>
+    <p class="copy-hint">Envía los productos nuevos directo a tu archivo de Excel Online en OneDrive, o cópialos para pegar en Google Sheets.</p>
+    <div class="table-scroll">
+      <table class="preview-table" id="previewTable"></table>
+    </div>
+    <div class="copy-actions">
+      <button class="btn-ms" id="sendExcelBtn">Enviar a Excel Online</button>
+      <span class="ms-status" id="msSendStatus"></span>
+    </div>
+    <div class="divider-label">o alternativamente</div>
+    <div class="copy-actions">
+      <button class="btn-accent" id="copyBtn">Copiar tabla (Google Sheets)</button>
+      <span class="copy-status" id="copyStatus"></span>
+    </div>
+    <textarea id="copyBuffer" class="copy-buffer" readonly></textarea>
+  </div>
+
+  <div class="footnote">
+    Las columnas "mes de visita", "sabor principal", "potencial anual en Kg", "potencial anual en USD" y "observaciones" no se generan aquí — se completan manualmente después, ya sea en el Excel o en el Sheet. El archivo de Excel se crea automáticamente en la raíz de tu OneDrive la primera vez que envías datos, con el nombre "Harmony Storecheck.xlsx".
+  </div>
+
+</div>
+
+<script>
+const MESES = ["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];
+function currentMonthLabel(){
+  const d = new Date();
+  return MESES[d.getMonth()] + " " + d.getFullYear();
+}
+
+// barcode decoration
+(function(){
+  const el = document.getElementById('barcode');
+  const widths = [3,1,2,1,4,2,1,3,1,2,4,1,2,1,3,2];
+  widths.forEach(w=>{
+    const bar = document.createElement('span');
+    bar.style.width = (w*2)+'px';
+    bar.style.height = (14 + Math.random()*20)+'px';
+    el.appendChild(bar);
+  });
+})();
+
+document.getElementById('currentOrigin').textContent = window.location.origin + window.location.pathname;
+
+let products = []; // {id, files:[{dataUrl, mediaType, base64}], status, error, data:{...}, sentExcel}
+let idCounter = 0;
+
+const cardsContainer = document.getElementById('cardsContainer');
+const emptyState = document.getElementById('emptyState');
+
+document.getElementById('addProductBtn').addEventListener('click', ()=>{
+  const id = ++idCounter;
+  products.push({
+    id, files:[], status:'idle', error:'', sentExcel:false,
+    data:{ nombre_producto:'', tipo_producto:'', ingredientes:'', fabricante:'', distrito_fabricante:'', mes_identificacion: currentMonthLabel() }
+  });
+  render();
+});
+
+function removeProduct(id){
+  products = products.filter(p=>p.id!==id);
+  render();
+}
+
+function fileToBase64(file){
+  return new Promise((resolve,reject)=>{
+    const reader = new FileReader();
+    reader.onload = ()=>{
+      const result = reader.result;
+      const base64 = result.split(',')[1];
+      resolve({ dataUrl: result, base64, mediaType: file.type || 'image/jpeg' });
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+async function handleFiles(id, fileList){
+  const product = products.find(p=>p.id===id);
+  if(!product) return;
+  const files = Array.from(fileList);
+  for(const f of files){
+    try{
+      const info = await fileToBase64(f);
+      product.files.push(info);
+    }catch(e){ /* skip unreadable file */ }
+  }
+  render();
+}
+
+function removePhoto(id, idx){
+  const product = products.find(p=>p.id===id);
+  if(!product) return;
+  product.files.splice(idx,1);
+  render();
+}
+
+async function analyzeProduct(id){
+  const product = products.find(p=>p.id===id);
+  if(!product || product.files.length===0) return;
+  product.status = 'loading';
+  product.error = '';
+  render();
+
+  try{
+    const content = [
+      { type:'text', text:'Extrae los datos de este producto a partir de las fotos de su empaque.' }
+    ];
+    product.files.forEach(f=>{
+      content.push({ type:'image', source:{ type:'base64', media_type:f.mediaType, data:f.base64 } });
+    });
+
+    const systemPrompt = `Eres un asistente que extrae información de fotos de etiquetas de productos alimenticios envasados en un supermercado. Analiza todas las imágenes dadas (pueden ser distintas caras del mismo empaque: frente, tabla de ingredientes, dorso con datos del fabricante).
+Devuelve SOLO un objeto JSON, sin texto adicional, sin markdown, con exactamente estas claves:
+- nombre_producto: nombre comercial del producto tal como aparece en el empaque.
+- tipo_producto: categoría general del producto (ej: chocolate, bebida gasificada, jugo, snack salado, galleta, lácteo, cereal, etc).
+- ingredientes: lista de ingredientes separada por comas, tal como aparece en la etiqueta.
+- fabricante: razón social o marca del fabricante indicada en el empaque.
+- distrito_fabricante: distrito o ciudad de fabricación indicado en el empaque.
+Si algún dato no aparece o no es legible en las fotos, usa el valor "No identificado" para ese campo.`;
+
+    const response = await fetch("https://api.anthropic.com/v1/messages", {
+      method:"POST",
+      headers:{ "Content-Type":"application/json" },
+      body: JSON.stringify({
+        model:"claude-sonnet-4-6",
+        max_tokens:1000,
+        system: systemPrompt,
+        messages:[{ role:"user", content }]
+      })
+    });
+
+    const data = await response.json();
+
+    if(data.error){
+      throw new Error(data.error.message || 'Error de la API');
+    }
+
+    const textBlock = (data.content||[]).find(b=>b.type==='text');
+    if(!textBlock) throw new Error('La respuesta no trajo texto (revisa consola para más detalle).');
+
+    let raw = textBlock.text.trim();
+    const firstBrace = raw.indexOf('{');
+    const lastBrace = raw.lastIndexOf('}');
+    if(firstBrace === -1 || lastBrace === -1) throw new Error('No se encontró JSON en la respuesta.');
+    const clean = raw.slice(firstBrace, lastBrace+1);
+    const parsed = JSON.parse(clean);
+
+    product.data.nombre_producto = parsed.nombre_producto || '';
+    product.data.tipo_producto = parsed.tipo_producto || '';
+    product.data.ingredientes = parsed.ingredientes || '';
+    product.data.fabricante = parsed.fabricante || '';
+    product.data.distrito_fabricante = parsed.distrito_fabricante || '';
+    product.status = 'done';
+  }catch(e){
+    console.error('Error al analizar producto', e);
+    product.status = 'error';
+    product.error = 'No se pudo analizar: ' + (e.message || 'error desconocido');
+  }
+  render();
+}
+
+function updateField(id, key, value){
+  const product = products.find(p=>p.id===id);
+  if(!product) return;
+  product.data[key] = value;
+}
+
+function render(){
+  emptyState.style.display = products.length===0 ? 'block' : 'none';
+  cardsContainer.innerHTML = '';
+
+  products.forEach((product, index)=>{
+    const card = document.createElement('div');
+    card.className = 'card';
+
+    const body = document.createElement('div');
+    body.className = 'card-body';
+
+    body.innerHTML = `
+      <div class="card-num">#${String(index+1).padStart(3,'0')}</div>
+      <h3 class="card-title">${product.data.nombre_producto || 'Producto sin analizar'}</h3>
+      <div class="photo-zone" data-photo-zone></div>
+      <div class="card-actions" data-actions></div>
+      <div class="status-line" data-status></div>
+      <div class="fields" data-fields style="display:none;"></div>
+      <div data-badge></div>
+    `;
+    card.appendChild(body);
+    cardsContainer.appendChild(card);
+
+    // photo zone
+    const photoZone = body.querySelector('[data-photo-zone]');
+    product.files.forEach((f, idx)=>{
+      const wrap = document.createElement('div');
+      wrap.className = 'thumb-remove';
+      wrap.innerHTML = `<img class="thumb" src="${f.dataUrl}"><div class="thumb-x">×</div>`;
+      wrap.querySelector('.thumb-x').addEventListener('click', ()=>removePhoto(product.id, idx));
+      photoZone.appendChild(wrap);
+    });
+    const label = document.createElement('label');
+    label.className = 'file-label';
+    label.innerHTML = '+';
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/*';
+    input.multiple = true;
+    input.capture = 'environment';
+    input.addEventListener('change', (e)=>handleFiles(product.id, e.target.files));
+    label.appendChild(input);
+    photoZone.appendChild(label);
+
+    // actions
+    const actions = body.querySelector('[data-actions]');
+    const analyzeBtn = document.createElement('button');
+    analyzeBtn.className = 'btn-accent btn-sm';
+    analyzeBtn.textContent = product.status==='loading' ? 'Analizando...' : (product.status==='done' ? 'Volver a analizar' : 'Analizar fotos');
+    analyzeBtn.disabled = product.files.length===0 || product.status==='loading';
+    analyzeBtn.addEventListener('click', ()=>analyzeProduct(product.id));
+    actions.appendChild(analyzeBtn);
+
+    const removeBtn = document.createElement('button');
+    removeBtn.className = 'btn-danger btn-sm';
+    removeBtn.textContent = 'Quitar producto';
+    removeBtn.addEventListener('click', ()=>removeProduct(product.id));
+    actions.appendChild(removeBtn);
+
+    // status line
+    const statusEl = body.querySelector('[data-status]');
+    if(product.status==='loading'){
+      statusEl.className='status-line loading';
+      statusEl.textContent='Leyendo etiquetas...';
+    } else if(product.status==='error'){
+      statusEl.className='status-line error';
+      statusEl.textContent=product.error;
+    } else {
+      statusEl.textContent='';
+    }
+
+    // fields
+    const fieldsEl = body.querySelector('[data-fields]');
+    if(product.status==='done'){
+      fieldsEl.style.display='block';
+      fieldsEl.innerHTML = `
+        <div class="fields-grid">
+          <div class="field">
+            <label>Nombre del producto</label>
+            <input type="text" data-key="nombre_producto" value="${escapeAttr(product.data.nombre_producto)}">
+          </div>
+          <div class="field">
+            <label>Tipo de producto</label>
+            <input type="text" data-key="tipo_producto" value="${escapeAttr(product.data.tipo_producto)}">
+          </div>
+          <div class="field" style="grid-column:1/-1;">
+            <label>Ingredientes</label>
+            <textarea data-key="ingredientes">${escapeHtml(product.data.ingredientes)}</textarea>
+          </div>
+          <div class="field">
+            <label>Fabricante</label>
+            <input type="text" data-key="fabricante" value="${escapeAttr(product.data.fabricante)}">
+          </div>
+          <div class="field">
+            <label>Distrito del fabricante</label>
+            <input type="text" data-key="distrito_fabricante" value="${escapeAttr(product.data.distrito_fabricante)}">
+          </div>
+          <div class="field">
+            <label>Mes de identificación</label>
+            <input type="text" data-key="mes_identificacion" value="${escapeAttr(product.data.mes_identificacion)}">
+          </div>
+        </div>
+      `;
+      fieldsEl.querySelectorAll('[data-key]').forEach(elm=>{
+        elm.addEventListener('input', (e)=>{
+          updateField(product.id, e.target.getAttribute('data-key'), e.target.value);
+          if(e.target.getAttribute('data-key')==='nombre_producto'){
+            const titleEl = card.querySelector('.card-title');
+            titleEl.textContent = e.target.value || 'Producto sin analizar';
+          }
+          renderCopyTable();
+        });
+      });
+    }
+
+    // sent-to-excel badge
+    const badgeEl = body.querySelector('[data-badge]');
+    if(product.sentExcel){
+      badgeEl.innerHTML = `<span class="sent-badge ms">✓ Enviado a Excel Online</span>`;
+    }
+  });
+
+  renderCopyTable();
+}
+
+function buildTsvRows(){
+  return products
+    .filter(p => p.data.nombre_producto && p.data.nombre_producto.trim() !== '')
+    .map(p => [
+      p.data.nombre_producto,
+      p.data.tipo_producto,
+      p.data.ingredientes,
+      p.data.fabricante,
+      p.data.distrito_fabricante,
+      p.data.mes_identificacion
+    ]);
+}
+
+function renderCopyTable(){
+  const copySection = document.getElementById('copySection');
+  const previewTable = document.getElementById('previewTable');
+  const copyBuffer = document.getElementById('copyBuffer');
+  const rows = buildTsvRows();
+
+  if(rows.length === 0){
+    copySection.style.display = 'none';
+    return;
+  }
+  copySection.style.display = 'block';
+
+  const headers = ['Nombre del producto','Tipo de producto','Ingredientes','Fabricante','Distrito del fabricante','Mes de identificación'];
+  let html = '<tr>' + headers.map(h=>`<th>${escapeHtml(h)}</th>`).join('') + '</tr>';
+  rows.forEach(row=>{
+    html += '<tr>' + row.map(cell=>`<td title="${escapeAttr(cell)}">${escapeHtml(cell)}</td>`).join('') + '</tr>';
+  });
+  previewTable.innerHTML = html;
+
+  const tsv = rows.map(row => row.map(cell => (cell||'').replace(/\t/g,' ').replace(/\n/g,' ')).join('\t')).join('\n');
+  copyBuffer.value = tsv;
+}
+
+document.getElementById('copyBtn').addEventListener('click', async ()=>{
+  const copyBuffer = document.getElementById('copyBuffer');
+  const copyStatus = document.getElementById('copyStatus');
+  try{
+    await navigator.clipboard.writeText(copyBuffer.value);
+    copyStatus.textContent = 'Copiado ✓ Pégalo en la celda A2 de tu Sheet';
+  }catch(e){
+    copyBuffer.style.position = 'static';
+    copyBuffer.style.left = 'auto';
+    copyBuffer.style.top = 'auto';
+    copyBuffer.style.width = '100%';
+    copyBuffer.style.height = '80px';
+    copyBuffer.style.opacity = '1';
+    copyBuffer.style.marginTop = '10px';
+    copyBuffer.focus();
+    copyBuffer.select();
+    copyStatus.textContent = 'No se pudo copiar automáticamente — selecciona el texto de abajo y usa Ctrl+C';
+  }
+  setTimeout(()=>{ copyStatus.textContent=''; }, 5000);
+});
+
+function escapeHtml(str){
+  return (str||'').replace(/[&<>]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+}
+function escapeAttr(str){
+  return (str||'').replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+}
+
+/* ========================================================================
+   Microsoft OneDrive / Excel Online integration (MSAL.js + Microsoft Graph)
+   ======================================================================== */
+
+const GRAPH_SCOPES = ["Files.ReadWrite"];
+const EXCEL_FILE_NAME = "Harmony Storecheck.xlsx";
+const EXCEL_TABLE_NAME = "TablaProductos";
+
+// Minimal empty .xlsx template (sheet "Productos" with header row + Excel Table),
+// used to create the file in OneDrive the first time data is sent.
+const EMPTY_XLSX_BASE64 = "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";
+
+function base64ToUint8Array(base64){
+  const binary = atob(base64);
+  const len = binary.length;
+  const bytes = new Uint8Array(len);
+  for(let i=0;i<len;i++){ bytes[i] = binary.charCodeAt(i); }
+  return bytes;
+}
+
+let msalInstance = null;
+let msalAccount = null;
+
+function getStoredClientId(){
+  return document.getElementById('clientIdInput').value.trim();
+}
+
+async function ensureMsalInstance(){
+  const clientId = getStoredClientId();
+  if(!clientId){
+    throw new Error('Ingresa primero el Client ID de tu app de Azure.');
+  }
+  if(msalInstance && msalInstance.__clientId === clientId){
+    return msalInstance;
+  }
+  const config = {
+    auth: {
+      clientId: clientId,
+      authority: 'https://login.microsoftonline.com/common',
+      redirectUri: window.location.origin + window.location.pathname
+    },
+    cache: { cacheLocation: 'sessionStorage' }
+  };
+  const instance = new msal.PublicClientApplication(config);
+  await instance.initialize();
+  instance.__clientId = clientId;
+  msalInstance = instance;
+  return instance;
+}
+
+async function connectToOneDrive(){
+  const statusEl = document.getElementById('msSettingsStatus');
+  try{
+    statusEl.textContent = 'Conectando...';
+    const instance = await ensureMsalInstance();
+    const loginResponse = await instance.loginPopup({ scopes: GRAPH_SCOPES });
+    msalAccount = loginResponse.account;
+    statusEl.innerHTML = `<span class="ms-connected">✓ Conectado como ${escapeHtml(msalAccount.username)}</span>`;
+  }catch(e){
+    console.error('Error al conectar con OneDrive', e);
+    statusEl.textContent = 'No se pudo conectar: ' + (e.message || 'error desconocido');
+  }
+}
+
+document.getElementById('msConnectBtn').addEventListener('click', connectToOneDrive);
+
+async function getGraphToken(){
+  const instance = await ensureMsalInstance();
+  if(!msalAccount){
+    const loginResponse = await instance.loginPopup({ scopes: GRAPH_SCOPES });
+    msalAccount = loginResponse.account;
+  }
+  try{
+    const resp = await instance.acquireTokenSilent({ scopes: GRAPH_SCOPES, account: msalAccount });
+    return resp.accessToken;
+  }catch(e){
+    const resp = await instance.acquireTokenPopup({ scopes: GRAPH_SCOPES, account: msalAccount });
+    return resp.accessToken;
+  }
+}
+
+async function getOrCreateExcelFile(token){
+  const encodedName = encodeURIComponent(EXCEL_FILE_NAME);
+  const getUrl = `https://graph.microsoft.com/v1.0/me/drive/root:/${encodedName}`;
+  let resp = await fetch(getUrl, { headers: { Authorization: `Bearer ${token}` } });
+  if(resp.status === 200){
+    const json = await resp.json();
+    return json.id;
+  }
+  if(resp.status !== 404){
+    const errJson = await resp.json().catch(()=>({}));
+    throw new Error('No se pudo buscar el archivo en OneDrive: ' + (errJson.error?.message || resp.status));
+  }
+  // Not found -> create it from the empty template
+  const uploadUrl = `https://graph.microsoft.com/v1.0/me/drive/root:/${encodedName}:/content`;
+  const bytes = base64ToUint8Array(EMPTY_XLSX_BASE64);
+  const createResp = await fetch(uploadUrl, {
+    method: 'PUT',
+    headers: {
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    },
+    body: bytes
+  });
+  if(!createResp.ok){
+    const errJson = await createResp.json().catch(()=>({}));
+    throw new Error('No se pudo crear el archivo en OneDrive: ' + (errJson.error?.message || createResp.status));
+  }
+  const created = await createResp.json();
+  return created.id;
+}
+
+async function addRowsToExcelTable(token, fileId, rows){
+  const encodedTable = encodeURIComponent(EXCEL_TABLE_NAME);
+  const url = `https://graph.microsoft.com/v1.0/me/drive/items/${fileId}/workbook/tables('${encodedTable}')/rows/add`;
+  const resp = await fetch(url, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({ values: rows })
+  });
+  if(!resp.ok){
+    const errJson = await resp.json().catch(()=>({}));
+    throw new Error('No se pudo escribir en la tabla de Excel: ' + (errJson.error?.message || resp.status));
+  }
+}
+
+document.getElementById('sendExcelBtn').addEventListener('click', async ()=>{
+  const statusEl = document.getElementById('msSendStatus');
+  const pending = products.filter(p => !p.sentExcel && p.data.nombre_producto && p.data.nombre_producto.trim() !== '');
+
+  if(pending.length === 0){
+    statusEl.className = 'ms-status error';
+    statusEl.textContent = 'No hay productos nuevos por enviar.';
+    setTimeout(()=>{ statusEl.textContent=''; }, 4000);
+    return;
+  }
+
+  const sendBtn = document.getElementById('sendExcelBtn');
+  sendBtn.disabled = true;
+  statusEl.className = 'ms-status';
+  statusEl.textContent = 'Conectando con OneDrive...';
+
+  try{
+    const token = await getGraphToken();
+    statusEl.textContent = 'Buscando/creando el archivo de Excel...';
+    const fileId = await getOrCreateExcelFile(token);
+
+    statusEl.textContent = `Enviando ${pending.length} producto(s)...`;
+    const rows = pending.map(p => [
+      p.data.nombre_producto,
+      p.data.tipo_producto,
+      p.data.ingredientes,
+      p.data.fabricante,
+      p.data.distrito_fabricante,
+      p.data.mes_identificacion,
+      '', '', '', '', ''
+    ]);
+    await addRowsToExcelTable(token, fileId, rows);
+
+    pending.forEach(p => { p.sentExcel = true; });
+    statusEl.className = 'ms-status';
+    statusEl.textContent = `✓ ${pending.length} producto(s) enviado(s) a "${EXCEL_FILE_NAME}"`;
+    render();
+  }catch(e){
+    console.error('Error al enviar a Excel Online', e);
+    statusEl.className = 'ms-status error';
+    statusEl.textContent = e.message || 'Error desconocido al enviar a Excel Online';
+  }finally{
+    sendBtn.disabled = false;
+  }
+});
+
+render();
+</script>
+</body>
+</html>

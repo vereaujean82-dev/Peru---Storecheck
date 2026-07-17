@@ -7,6 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=IBM+Plex+Mono:wght@400;500&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
 <script src="https://alcdn.msauth.net/browser/2.35.0/js/msal-browser.min.js"></script>
+<script src="https://accounts.google.com/gsi/client" async defer></script>
 <style>
   :root{
     --paper:#FFFFFF;
@@ -99,6 +100,16 @@
     padding:5px 10px;
     border-radius:20px;
   }
+  .google-connected{
+    display:inline-flex;align-items:center;gap:6px;
+    font-family:'IBM Plex Mono',monospace;
+    font-size:11.5px;
+    color:#1A73E8;
+    background:#E8F0FE;
+    border:1px solid #C6DAFC;
+    padding:5px 10px;
+    border-radius:20px;
+  }
 
   /* Buttons */
   button{
@@ -118,6 +129,7 @@
   .btn-ghost{background:transparent;color:var(--ink);border:1px solid var(--line);}
   .btn-danger{background:transparent;color:var(--stamp);border:1px solid var(--line);}
   .btn-ms{background:var(--ms-green);color:var(--white);}
+  .btn-google{background:#1A73E8;color:var(--white);}
   .btn-sm{padding:6px 11px;font-size:12.5px;}
 
   .add-row{margin-bottom:22px;}
@@ -381,6 +393,30 @@
     </p>
   </div>
 
+  <div class="settings">
+    <p class="settings-title">Conexión con Google Sheets</p>
+    <div class="settings-row">
+      <div style="flex:1;min-width:220px;">
+        <label>Client ID de Google Cloud</label>
+        <input type="text" id="googleClientIdInput" placeholder="ej. 123456789-abc.apps.googleusercontent.com">
+      </div>
+      <div style="flex:1;min-width:220px;">
+        <label>ID de la hoja de cálculo</label>
+        <input type="text" id="googleSheetIdInput" placeholder="el que va en la URL entre /d/ y /edit">
+      </div>
+      <div style="flex:1;min-width:160px;">
+        <label>Nombre de la pestaña</label>
+        <input type="text" id="googleSheetTabInput" placeholder="Hoja 1" value="Hoja 1">
+      </div>
+      <button class="btn-google" id="googleConnectBtn">Conectar con Google</button>
+    </div>
+    <div class="settings-status" id="googleSettingsStatus"></div>
+    <p class="settings-help">
+      Necesitas un Client ID OAuth de tipo "Aplicación web" en Google Cloud Console, con el scope <code>spreadsheets</code> habilitado y esta misma URL agregada en "Authorized JavaScript origins".
+      Crea tú mismo una Hoja de Google con la fila de encabezados (Nombre del producto, Tipo de producto, Ingredientes, Fabricante, Distrito del fabricante, Mes de identificación) y pega aquí su ID y el nombre exacto de la pestaña.
+    </p>
+  </div>
+
   <div class="add-row">
     <button class="btn-accent" id="addProductBtn">+ Agregar producto</button>
   </div>
@@ -390,7 +426,7 @@
 
   <div class="copy-section" id="copySection" style="display:none;">
     <h3 class="copy-title">Resumen de productos analizados</h3>
-    <p class="copy-hint">Envía los productos nuevos directo a tu archivo de Excel Online en OneDrive, o cópialos para pegar en Google Sheets.</p>
+    <p class="copy-hint">Envía los productos nuevos directo a tu archivo de Excel Online en OneDrive, a tu Google Sheet, o cópialos manualmente.</p>
     <div class="table-scroll">
       <table class="preview-table" id="previewTable"></table>
     </div>
@@ -398,16 +434,21 @@
       <button class="btn-ms" id="sendExcelBtn">Enviar a Excel Online</button>
       <span class="ms-status" id="msSendStatus"></span>
     </div>
+    <div class="divider-label">o</div>
+    <div class="copy-actions">
+      <button class="btn-google" id="sendGoogleBtn">Enviar a Google Sheets</button>
+      <span class="ms-status" id="googleSendStatus"></span>
+    </div>
     <div class="divider-label">o alternativamente</div>
     <div class="copy-actions">
-      <button class="btn-accent" id="copyBtn">Copiar tabla (Google Sheets)</button>
+      <button class="btn-accent" id="copyBtn">Copiar tabla (pegar manualmente)</button>
       <span class="copy-status" id="copyStatus"></span>
     </div>
     <textarea id="copyBuffer" class="copy-buffer" readonly></textarea>
   </div>
 
   <div class="footnote">
-    Las columnas "mes de visita", "sabor principal", "potencial anual en Kg", "potencial anual en USD" y "observaciones" no se generan aquí — se completan manualmente después, ya sea en el Excel o en el Sheet. El archivo de Excel se crea automáticamente en la raíz de tu OneDrive la primera vez que envías datos, con el nombre "Harmony Storecheck.xlsx".
+    Las columnas "mes de visita", "sabor principal", "potencial anual en Kg", "potencial anual en USD" y "observaciones" no se generan aquí — se completan manualmente después, ya sea en el Excel o en el Sheet. El archivo de Excel se crea automáticamente en la raíz de tu OneDrive la primera vez que envías datos, con el nombre "Harmony Storecheck.xlsx". Para Google Sheets, tú creas la hoja una sola vez con los encabezados, y la app le agrega filas nuevas debajo cada vez que envías.
   </div>
 
 </div>
@@ -442,7 +483,7 @@ const emptyState = document.getElementById('emptyState');
 document.getElementById('addProductBtn').addEventListener('click', ()=>{
   const id = ++idCounter;
   products.push({
-    id, files:[], status:'idle', error:'', sentExcel:false,
+    id, files:[], status:'idle', error:'', sentExcel:false, sentGoogle:false,
     data:{ nombre_producto:'', tipo_producto:'', ingredientes:'', fabricante:'', distrito_fabricante:'', mes_identificacion: currentMonthLabel() }
   });
   render();
@@ -672,11 +713,16 @@ function render(){
       });
     }
 
-    // sent-to-excel badge
+    // sent badges
     const badgeEl = body.querySelector('[data-badge]');
+    let badgeHtml = '';
     if(product.sentExcel){
-      badgeEl.innerHTML = `<span class="sent-badge ms">✓ Enviado a Excel Online</span>`;
+      badgeHtml += `<span class="sent-badge ms">✓ Enviado a Excel Online</span> `;
     }
+    if(product.sentGoogle){
+      badgeHtml += `<span class="sent-badge ms" style="color:#1A73E8;background:#E8F0FE;border-color:#C6DAFC;">✓ Enviado a Google Sheets</span>`;
+    }
+    badgeEl.innerHTML = badgeHtml;
   });
 
   renderCopyTable();
@@ -921,6 +967,159 @@ document.getElementById('sendExcelBtn').addEventListener('click', async ()=>{
     console.error('Error al enviar a Excel Online', e);
     statusEl.className = 'ms-status error';
     statusEl.textContent = e.message || 'Error desconocido al enviar a Excel Online';
+  }finally{
+    sendBtn.disabled = false;
+  }
+});
+
+/* ========================================================================
+   Google Sheets integration (Google Identity Services + Sheets API)
+   ======================================================================== */
+
+const GOOGLE_SCOPE = "https://www.googleapis.com/auth/spreadsheets";
+
+let googleTokenClient = null;
+let googleAccessToken = null;
+
+function getGoogleClientId(){
+  return document.getElementById('googleClientIdInput').value.trim();
+}
+function getGoogleSheetId(){
+  return document.getElementById('googleSheetIdInput').value.trim();
+}
+function getGoogleSheetTab(){
+  const v = document.getElementById('googleSheetTabInput').value.trim();
+  return v || 'Hoja 1';
+}
+
+function ensureGoogleTokenClient(onToken){
+  const clientId = getGoogleClientId();
+  if(!clientId){
+    throw new Error('Ingresa primero el Client ID de Google Cloud.');
+  }
+  if(typeof google === 'undefined' || !google.accounts || !google.accounts.oauth2){
+    throw new Error('La librería de Google aún no cargó. Recarga la página e intenta de nuevo.');
+  }
+  if(!googleTokenClient || googleTokenClient.__clientId !== clientId){
+    googleTokenClient = google.accounts.oauth2.initTokenClient({
+      client_id: clientId,
+      scope: GOOGLE_SCOPE,
+      callback: onToken
+    });
+    googleTokenClient.__clientId = clientId;
+  } else {
+    googleTokenClient.callback = onToken;
+  }
+  return googleTokenClient;
+}
+
+async function connectToGoogle(){
+  const statusEl = document.getElementById('googleSettingsStatus');
+  try{
+    statusEl.textContent = 'Conectando...';
+    await new Promise((resolve, reject)=>{
+      try{
+        const client = ensureGoogleTokenClient((tokenResponse)=>{
+          if(tokenResponse.error){
+            reject(new Error(tokenResponse.error));
+            return;
+          }
+          googleAccessToken = tokenResponse.access_token;
+          resolve();
+        });
+        client.requestAccessToken({ prompt: googleAccessToken ? '' : 'consent' });
+      }catch(err){ reject(err); }
+    });
+    statusEl.innerHTML = `<span class="google-connected">✓ Conectado con Google</span>`;
+  }catch(e){
+    console.error('Error al conectar con Google', e);
+    statusEl.textContent = 'No se pudo conectar: ' + (e.message || 'error desconocido');
+  }
+}
+
+document.getElementById('googleConnectBtn').addEventListener('click', connectToGoogle);
+
+async function getGoogleAccessToken(){
+  if(googleAccessToken){
+    return googleAccessToken;
+  }
+  await new Promise((resolve, reject)=>{
+    try{
+      const client = ensureGoogleTokenClient((tokenResponse)=>{
+        if(tokenResponse.error){
+          reject(new Error(tokenResponse.error));
+          return;
+        }
+        googleAccessToken = tokenResponse.access_token;
+        resolve();
+      });
+      client.requestAccessToken({ prompt: 'consent' });
+    }catch(err){ reject(err); }
+  });
+  return googleAccessToken;
+}
+
+async function appendRowsToGoogleSheet(token, spreadsheetId, tabName, rows){
+  const range = encodeURIComponent(`${tabName}!A:F`);
+  const url = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${range}:append?valueInputOption=USER_ENTERED&insertDataOption=INSERT_ROWS`;
+  const resp = await fetch(url, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({ values: rows })
+  });
+  if(!resp.ok){
+    const errJson = await resp.json().catch(()=>({}));
+    throw new Error('No se pudo escribir en la Hoja de Google: ' + (errJson.error?.message || resp.status));
+  }
+}
+
+document.getElementById('sendGoogleBtn').addEventListener('click', async ()=>{
+  const statusEl = document.getElementById('googleSendStatus');
+  const pending = products.filter(p => !p.sentGoogle && p.data.nombre_producto && p.data.nombre_producto.trim() !== '');
+
+  if(pending.length === 0){
+    statusEl.className = 'ms-status error';
+    statusEl.textContent = 'No hay productos nuevos por enviar.';
+    setTimeout(()=>{ statusEl.textContent=''; }, 4000);
+    return;
+  }
+
+  const sheetId = getGoogleSheetId();
+  if(!sheetId){
+    statusEl.className = 'ms-status error';
+    statusEl.textContent = 'Falta el ID de la hoja de cálculo en la configuración.';
+    return;
+  }
+
+  const sendBtn = document.getElementById('sendGoogleBtn');
+  sendBtn.disabled = true;
+  statusEl.className = 'ms-status';
+  statusEl.textContent = 'Conectando con Google...';
+
+  try{
+    const token = await getGoogleAccessToken();
+    statusEl.textContent = `Enviando ${pending.length} producto(s)...`;
+    const rows = pending.map(p => [
+      p.data.nombre_producto,
+      p.data.tipo_producto,
+      p.data.ingredientes,
+      p.data.fabricante,
+      p.data.distrito_fabricante,
+      p.data.mes_identificacion
+    ]);
+    await appendRowsToGoogleSheet(token, sheetId, getGoogleSheetTab(), rows);
+
+    pending.forEach(p => { p.sentGoogle = true; });
+    statusEl.className = 'ms-status';
+    statusEl.textContent = `✓ ${pending.length} producto(s) enviado(s) a Google Sheets`;
+    render();
+  }catch(e){
+    console.error('Error al enviar a Google Sheets', e);
+    statusEl.className = 'ms-status error';
+    statusEl.textContent = e.message || 'Error desconocido al enviar a Google Sheets';
   }finally{
     sendBtn.disabled = false;
   }
